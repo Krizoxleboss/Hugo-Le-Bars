@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Weather</title>
+</head>
+<body>
+    <header>
+        <h1>Méteo World</h1>
+    </header>
+
+    <main>
+        <section id="api-section">
+            <form id="city-form">
+                <label for="city-input">Entrez le nom de la ville :</label>
+                <input type="text" id="city-input" placeholder="Ex. Paris" required>
+                <button id="refresh-button" type="button">Rafraîchir les données</button>
+            </form>
+
+            <section id="current-weather">
+                <div id="current-weather-data">
+                    <!-- Les données météorologiques actuelles seront insérées ici -->
+                </div>
+            </section>
+
+            <div id="api-data">
+                <table id="forecast-table">
+                    <thead>
+                        <tr>
+                            <th>Date et Heure</th>
+                            <th>Température</th>
+                            <th>Ressentie</th>
+                            <th>Conditions</th>
+                            <th>Vent</th>
+                            <th>Humidité</th>
+                            <th>Pression</th>
+                            <th>Visibilité</th>
+                            <th>Lever du soleil</th>
+                            <th>Coucher du soleil</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Les données seront insérées ici -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Hug's et Dimeh - Projet TP</p>
+    </footer>
+
+   <script>
+    // Fonction pour déterminer la direction du vent en fonction des degrés
+    function windDirection(degree) {
+        const sectors = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        degree = degree + 22.5;
+        if (degree < 0) degree = 360 - Math.abs(degree) % 360;
+        else degree = degree % 360;
+        const sector = Math.floor(degree / 45);
+        return sectors[sector];
+    }
+
+    // Fonction pour afficher les données météorologiques actuelles
+    function displayCurrentWeather(data) {
+        const weatherDiv = document.getElementById('current-weather-data');
+        weatherDiv.innerHTML = ''; // Efface les données actuelles
+
+        const cityName = document.getElementById('city-input').value; // Obtenir la ville saisie
+        const title = `Météo actuelle pour la ville de ${cityName}`;
+
+        const content = `<h2>${title}</h2>
+                         <p>Température: ${data.main.temp}°C (Ressentie comme ${data.main.feels_like}°C)</p>
+                         <p>Conditions: ${data.weather[0].description}</p>
+                         <p>Vent: ${data.wind.speed} m/s, Direction: ${windDirection(data.wind.deg)}</p>
+                         <p>Humidité: ${data.main.humidity}%</p>
+                         <p>Pression: ${data.main.pressure} hPa</p>
+                         <p>Visibilité: ${data.visibility / 1000} km</p>
+                         <p>Lever du soleil: ${new Date(data.sys.sunrise * 1000).toLocaleTimeString()}</p>
+                         <p>Coucher du soleil: ${new Date(data.sys.sunset * 1000).toLocaleTimeString()}</p>`;
+
+        weatherDiv.innerHTML = content;
+        document.getElementById('current-weather').style.display = 'block'; // Rend la section visible
+    }
+
+function displayForecast(data) {
+    const forecastTable = document.getElementById('forecast-table');
+    const tableBody = forecastTable.getElementsByTagName('tbody')[0];
+    tableBody.innerHTML = ''; // Efface les données existantes
+
+    data.list.forEach(day => {
+        const dateTime = new Date(day.dt * 1000).toLocaleString('fr-FR', { hour12: false });
+        const temp = `${day.main.temp.toFixed(2)}°C`;
+        const feelsLike = `${day.main.feels_like.toFixed(2)}°C`;
+        const conditions = day.weather[0].description;
+        const wind = `${day.wind.speed} m/s, Direction: ${windDirection(day.wind.deg)}`;
+        const humidity = `${day.main.humidity}%`;
+        const pressure = `${day.main.pressure} hPa`;
+        const visibility = `${(day.visibility / 1000).toFixed(2)} km`;
+        const sunrise = new Date(day.sunrise * 1000).toLocaleTimeString();
+        const sunset = new Date(day.sunset * 1000).toLocaleTimeString();
+
+        const row = `<tr>
+            <td>${dateTime}</td>
+            <td>${temp}</td>
+            <td>${feelsLike}</td>
+            <td>${conditions}</td>
+            <td>${wind}</td>
+            <td>${humidity}</td>
+            <td>${pressure}</td>
+            <td>${visibility}</td>
+            <td>${sunrise}</td>
+            <td>${sunset}</td>
+        </tr>`;
+
+        tableBody.innerHTML += row;
+    });
+
+    forecastTable.style.display = 'table'; // Rend le tableau visible après l'ajout des données
+}
+
+    // Fonction pour rafraîchir les données
+    async function refreshData() {
+        const city = document.getElementById('city-input').value.trim();
+
+        if (!city) {
+            alert('Veuillez entrer un nom de ville.');
+            return;
+        }
+
+        try {
+            document.getElementById('refresh-button').disabled = true;
+
+            // Appeler le script PHP pour récupérer les données du backend
+            const response = await fetch('backend.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `city=${city}`,
+            });
+
+            const data = await response.json();
+
+            // Utiliser les données dans votre front end
+            displayCurrentWeather(data.currentData);
+            displayForecast(data.forecastData);
+
+            document.getElementById('refresh-button').disabled = false;
+        } catch (error) {
+            console.error('Erreur lors de la récupération des données météo:', error);
+            document.getElementById('refresh-button').disabled = false;
+        }
+    }
+
+    // Ajouter un écouteur d'événements au bouton de rafraîchissement
+    document.getElementById('refresh-button').addEventListener('click', refreshData);
+</script>
+
+</body>
+</html>
